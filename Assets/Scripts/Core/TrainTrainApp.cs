@@ -51,6 +51,7 @@ namespace TrainTrain
     public sealed class TrainTrainApp : MonoBehaviour
     {
         public const int InteractableLayer = 8;
+        public const float GlobalTrainSpeedMultiplier = 1.6f;
 
         public static TrainTrainApp Instance { get; private set; }
 
@@ -103,8 +104,10 @@ namespace TrainTrain
             get
             {
                 return CurrentLevel == null
-                    ? 2f
-                    : CurrentLevel.TrainSpeed * TrainStyleCatalog.Get(PlayerProgress.SelectedTrainStyle).SpeedMultiplier;
+                    ? 2f * GlobalTrainSpeedMultiplier
+                    : CurrentLevel.TrainSpeed
+                        * TrainStyleCatalog.Get(PlayerProgress.SelectedTrainStyle).SpeedMultiplier
+                        * GlobalTrainSpeedMultiplier;
             }
         }
         public TrainStyleInfo SelectedTrainInfo
@@ -697,6 +700,12 @@ namespace TrainTrain
             stationsByNode = new Dictionary<Vector2Int, StationDefinition>();
             stationQueues = new Dictionary<Vector2Int, StationRuntime>();
             passengerRandom = new System.Random(level.Index * 7919 + 37);
+            int availableStationColorMask = 0;
+            for (int i = 0; i < level.Map.Stations.Count; i++)
+            {
+                availableStationColorMask |= 1 << (int)level.Map.Stations[i].Color;
+            }
+
             for (int i = 0; i < level.Map.Stations.Count; i++)
             {
                 StationDefinition station = level.Map.Stations[i];
@@ -704,7 +713,9 @@ namespace TrainTrain
                 StationRuntime queue = new StationRuntime(station);
                 queue.Capacity = station.Capacity;
                 queue.SpawnInterval = station.SpawnInterval;
-                queue.GenerationMask = station.GenerationMask;
+                queue.GenerationMask = availableStationColorMask != 0
+                    ? availableStationColorMask
+                    : station.GenerationMask;
                 int initial = station.InitialPassengers;
                 for (int passenger = 0; passenger < initial; passenger++)
                 {

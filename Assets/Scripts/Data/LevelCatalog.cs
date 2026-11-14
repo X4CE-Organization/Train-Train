@@ -507,10 +507,15 @@ namespace TrainTrain
                     int[] quotas = new int[4];
                     for (int color = 0; color < 4; color++)
                     {
-                        quotas[color] = 4 + regionIndex * 2 + local + ((color + offset) % 2);
+                        quotas[color] =
+                            4 + regionIndex + local / 4 + ((color + offset) % 2);
                     }
 
-                    RailMap levelMap = BuildLevelMap(region.Map, global, local);
+                    int fleetSize = Mathf.Clamp(
+                        1 + regionIndex / 2 + local / 3,
+                        1,
+                        3);
+                    RailMap levelMap = BuildLevelMap(region.Map, global, local, regionIndex);
                     result.Add(new LevelDefinition(
                         global,
                         regionIndex,
@@ -519,15 +524,15 @@ namespace TrainTrain
                         namesEn[regionIndex][local],
                         hints[regionIndex][local],
                         quotas,
-                        65f + regionIndex * 5f + local * 2f,
-                        1.65f + regionIndex * 0.1f + local * 0.055f,
+                        90f + regionIndex * 7f + local * 4f,
+                        1.55f + regionIndex * 0.04f + local * 0.025f,
                         region,
                         levelMap,
-                        Mathf.Clamp(1 + regionIndex / 2 + local / 3, 1, 4),
-                        4 + regionIndex + local / 2,
-                        16 + regionIndex * 2,
-                        Mathf.Max(1.3f, 2.8f - regionIndex * 0.18f - local * 0.05f),
-                        regionIndex == 0 && local < 2 ? 3 : 15));
+                        fleetSize,
+                        2 + local / 3,
+                        18 + regionIndex,
+                        Mathf.Max(2.1f, 3.4f - regionIndex * 0.1f - local * 0.035f),
+                        15));
                     global++;
                 }
             }
@@ -535,7 +540,11 @@ namespace TrainTrain
             return result;
         }
 
-        private static RailMap BuildLevelMap(RailMap source, int levelIndex, int local)
+        private static RailMap BuildLevelMap(
+            RailMap source,
+            int levelIndex,
+            int local,
+            int regionIndex)
         {
             Vector2Int Transform(Vector2Int point)
             {
@@ -576,11 +585,10 @@ namespace TrainTrain
                 }
             }
 
-            // A level is a controlled simplification of its theme map. Each level
-            // keeps one connected backbone and at most two intentional loops, so
-            // later levels gain pressure from trains and passengers instead of a
-            // wall of short, decorative connections.
-            int loopBudget = local == 0 ? 0 : local <= 2 ? 1 : 2;
+            // Every level keeps a clear connected backbone. Later levels add at
+            // most one optional loop, so pressure comes from pacing rather than
+            // a dense wall of indistinguishable junctions.
+            int loopBudget = local < 4 ? 0 : 1;
             List<RailEdge> edges = SparsifyEdges(
                 candidates,
                 levelIndex * 31 + local * 17 + 7,
@@ -617,10 +625,10 @@ namespace TrainTrain
                     stationLink,
                     (RailColor)colorIndex,
                     original.IsSource,
-                    original.IsSource ? 3 + local / 2 : 4 + local / 2,
-                    14 + local,
-                    Mathf.Max(0.8f, 2.8f - local * 0.18f),
-                    levelIndex < 8 && local < 2 ? 3 : 15));
+                    original.IsSource ? 2 + local / 3 : 3 + local / 2,
+                    18 + regionIndex,
+                    Mathf.Max(2.1f, 3.4f - regionIndex * 0.1f - local * 0.035f),
+                    15));
             }
 
             Dictionary<RailEdge, TrackKind> kinds = new Dictionary<RailEdge, TrackKind>();
@@ -683,7 +691,7 @@ namespace TrainTrain
                 return distanceB.CompareTo(distanceA);
             });
 
-            int requested = local >= 4 ? 2 : 1;
+            int requested = local >= 4 ? 1 : 0;
             HashSet<Vector2Int> existingNodes = new HashSet<Vector2Int>();
             for (int i = 0; i < input.Count; i++)
             {

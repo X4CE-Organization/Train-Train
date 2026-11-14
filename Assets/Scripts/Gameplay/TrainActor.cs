@@ -24,6 +24,10 @@ namespace TrainTrain
         public float Progress { get; private set; }
         public float RouteAge { get; private set; }
         public bool IsMoving { get; private set; }
+        public bool HasDepartureCollisionGrace
+        {
+            get { return autoStartAt < float.MaxValue && Time.time < autoStartAt + 3f; }
+        }
 
         private TrainTrainApp app;
         private float segmentDuration;

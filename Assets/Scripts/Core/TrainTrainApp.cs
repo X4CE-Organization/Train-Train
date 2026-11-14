@@ -711,8 +711,8 @@ namespace TrainTrain
                 StationDefinition station = level.Map.Stations[i];
                 stationsByNode[station.Position] = station;
                 StationRuntime queue = new StationRuntime(station);
-                queue.Capacity = station.Capacity;
-                queue.SpawnInterval = station.SpawnInterval;
+                queue.Capacity = Mathf.Max(station.Capacity, level.StationCapacity);
+                queue.SpawnInterval = Mathf.Max(station.SpawnInterval, level.StationSpawnInterval);
                 queue.GenerationMask = availableStationColorMask != 0
                     ? availableStationColorMask
                     : station.GenerationMask;
@@ -779,11 +779,17 @@ namespace TrainTrain
                 }
                 else
                 {
-                    SpawnTrainForColor((RailColor)color, true);
+                    TrainActor initialTrain = SpawnTrainForColor(
+                        (RailColor)color,
+                        color == 0);
+                    if (initialTrain != null && color > 0)
+                    {
+                        initialTrain.AutoStartIn(color * 15f);
+                    }
                 }
             }
 
-            ShowToast("列车已自动发车；点击车身可停车  ·  " + level.Hint);
+            ShowToast("列车将自动错峰发车；点击车身可停车  ·  " + level.Hint);
         }
 
         private void UpdateRun()
@@ -911,7 +917,7 @@ namespace TrainTrain
             return false;
         }
 
-        private void SpawnTrainForColor(RailColor color, bool autoStart = false)
+        private TrainActor SpawnTrainForColor(RailColor color, bool autoStart = false)
         {
             StationDefinition source = default;
             bool found = false;
@@ -929,7 +935,7 @@ namespace TrainTrain
             if (!found)
             {
                 Debug.LogError("No source station for " + color + " on " + CurrentLevel.Map.Name);
-                return;
+                return null;
             }
 
             TrainActor train = TrainActor.Create(
@@ -941,6 +947,7 @@ namespace TrainTrain
             trains.Add(train);
             Audio.Play(AudioCue.Spawn);
             train.SetMoving(autoStart);
+            return train;
         }
 
         private bool TryChooseRegularNext(Vector2Int node, Vector2Int incoming, out Vector2Int next)
@@ -1041,7 +1048,11 @@ namespace TrainTrain
                     Vector3 delta = a.transform.position - b.transform.position;
                     bool sameLayer = Mathf.Abs(delta.y) < 0.38f;
                     delta.y = 0f;
-                    if (sameLayer && (a.IsMoving || b.IsMoving) && delta.sqrMagnitude < 0.46f)
+                    if (sameLayer &&
+                        !a.HasDepartureCollisionGrace &&
+                        !b.HasDepartureCollisionGrace &&
+                        (a.IsMoving || b.IsMoving) &&
+                        delta.sqrMagnitude < 0.46f)
                     {
                         Vector3 explosionPosition = (a.transform.position + b.transform.position) * 0.5f;
                         RemoveTrain(a);
